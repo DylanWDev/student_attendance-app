@@ -1,27 +1,10 @@
 import { randomUUID } from 'node:crypto'
 import { Router } from 'express'
-import { db, todayString } from '../db.js'
+import { sql, todayString } from '../db.js'
 
 export const checkinRouter = Router()
 
-const getTodayPassword = db.prepare(
-  'SELECT password FROM daily_passwords WHERE attendance_date = ?'
-)
-const findStudent = db.prepare(`
-  SELECT * FROM students
-  WHERE active = 1
-    AND lower(trim(first_name)) = lower(trim(?))
-    AND lower(trim(last_name)) = lower(trim(?))
-    AND lower(trim(student_number)) = lower(trim(?))
-`)
-const findAttendance = db.prepare(
-  'SELECT 1 FROM attendance WHERE student_id = ? AND attendance_date = ?'
-)
-const insertAttendance = db.prepare(
-  'INSERT INTO attendance (id, student_id, attendance_date) VALUES (?, ?, ?)'
-)
-
-checkinRouter.post('/check-in', (req, res) => {
+checkinRouter.post('/check-in', async (req, res) => {
   const { firstName, lastName, studentNumber, password } = req.body ?? {}
 
   if (!firstName?.trim() || !lastName?.trim() || !studentNumber?.trim() || !password?.trim()) {
@@ -31,23 +14,36 @@ checkinRouter.post('/check-in', (req, res) => {
 
   const today = todayString()
 
-  const row = getTodayPassword.get(today)
-  if (!row || row.password !== password.trim()) {
+  const [passwordRow] = await sql`
+    SELECT password FROM daily_passwords WHERE attendance_date = ${today}
+  `
+  if (!passwordRow || passwordRow.password !== password.trim()) {
     res.status(400).json({ error: 'INVALID_PASSWORD' })
     return
   }
 
-  const student = findStudent.get(firstName, lastName, studentNumber)
+  const [student] = await sql`
+    SELECT * FROM students
+    WHERE active
+      AND lower(trim(first_name)) = lower(trim(${firstName}))
+      AND lower(trim(last_name)) = lower(trim(${lastName}))
+      AND lower(trim(student_number)) = lower(trim(${studentNumber}))
+  `
   if (!student) {
     res.status(400).json({ error: 'ROSTER_MISMATCH' })
     return
   }
 
-  if (findAttendance.get(student.id, today)) {
+  const [existing] = await sql`
+    SELECT 1 FROM attendance WHERE student_id = ${student.id} AND attendance_date = ${today}
+  `
+  if (existing) {
     res.status(409).json({ error: 'ALREADY_CHECKED_IN' })
     return
   }
 
-  insertAttendance.run(randomUUID(), student.id, today)
+  await sql`
+    INSERT INTO attendance (id, student_id, attendance_date) VALUES (${randomUUID()}, ${student.id}, ${today})
+  `
   res.json({ firstName: student.first_name })
 })

@@ -8,26 +8,35 @@ A simple classroom attendance app.
 ## Stack
 
 - React + Vite frontend, Tailwind CSS for styling
-- Express backend with a SQLite database (`server/data/attendance.db`, created automatically)
-- No external accounts or services required — everything runs as one self-hosted app
+- Express backend on Vercel serverless functions, Postgres (Neon) for storage
+- Teacher auth is a stateless HMAC-signed cookie (no session store)
 
 ## Setup
 
-1. Install dependencies:
+1. Create a [Neon](https://neon.tech) project and get its Postgres connection string (a free-tier database works fine; a separate branch/database for local dev is recommended).
+
+2. Install dependencies:
 
    ```bash
    npm install
    ```
 
-2. Copy `.env.example` to `.env` and fill in real values:
+3. Copy `.env.example` to `.env` and fill in real values:
 
    ```
    TEACHER_PASSWORD=choose-a-password
    SESSION_SECRET=a-long-random-string
+   DATABASE_URL=postgresql://...
    API_PORT=3001
    ```
 
-3. Start the app in development (runs the Vite dev server and the API together):
+4. Run the schema migration against your database (only needed once per database):
+
+   ```bash
+   npm run db:migrate
+   ```
+
+5. Start the app in development (runs the Vite dev server and the API together):
 
    ```bash
    npm run dev
@@ -35,14 +44,12 @@ A simple classroom attendance app.
 
    Open http://localhost:5173 — students check in there, and the teacher area is at http://localhost:5173/teacher.
 
-## Production
+## Production (Vercel)
 
-```bash
-npm run build
-npm start
-```
-
-This builds the frontend and starts a single Express server (on `API_PORT`) that serves both the built frontend and the API.
+1. Create a Vercel project linked to this repo.
+2. Set `TEACHER_PASSWORD`, `SESSION_SECRET`, and `DATABASE_URL` (a production Neon connection string) as environment variables on the Vercel project.
+3. Run `npm run db:migrate` once against the production database (e.g. locally with `DATABASE_URL` temporarily pointed at prod).
+4. Deploy. Vercel builds the frontend (`npm run build`) and serves it as static assets, with `/api/*` routed to a serverless function (see `vercel.json`).
 
 ## Notes
 

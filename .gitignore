@@ -34,3 +34,7 @@ server/data/*.db-*
 *.njsproj
 *.sln
 *.sw?
+.neon
+
+.vercel
+.env*

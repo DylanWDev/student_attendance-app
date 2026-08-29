@@ -7,14 +7,15 @@
     "dev": "concurrently -k -n web,api \"vite\" \"node --watch server/index.js\"",
     "build": "vite build",
     "start": "node server/index.js",
+    "db:migrate": "node server/migrate.js",
     "lint": "eslint .",
     "preview": "vite preview"
   },
   "dependencies": {
-    "better-sqlite3": "^12.4.1",
+    "@neondatabase/serverless": "^0.10.4",
+    "cookie-parser": "^1.4.7",
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
-    "express-session": "^1.18.2",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "react-router-dom": "^7.9.4"
