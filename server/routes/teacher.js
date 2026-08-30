@@ -104,6 +104,25 @@ teacherRouter.delete('/students/:id', async (req, res) => {
   res.status(204).end()
 })
 
+// Deliberately not filtered on `active`: removing a student is a soft delete and their
+// history is kept, so a link to a removed student should still open their calendar.
+teacherRouter.get('/students/:id/attendance', async (req, res) => {
+  const [student] = await sql`
+    SELECT * FROM students WHERE id = ${req.params.id}
+  `
+  if (!student) {
+    res.status(404).json({ error: 'STUDENT_NOT_FOUND' })
+    return
+  }
+
+  const rows = await sql`
+    SELECT attendance_date FROM attendance
+    WHERE student_id = ${student.id}
+    ORDER BY attendance_date
+  `
+  res.json({ student, dates: rows.map((row) => row.attendance_date) })
+})
+
 teacherRouter.get('/dashboard', async (req, res) => {
   const end = req.query.end?.trim() || todayString()
   const start =

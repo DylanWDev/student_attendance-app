@@ -1,3 +1,5 @@
+import { Link } from 'react-router-dom'
+
 function todayString() {
   const now = new Date()
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
@@ -39,11 +41,13 @@ export default function AttendanceGrid({ rows }) {
         ) : (
           <ul className="flex flex-wrap gap-2">
             {presentToday.map((s) => (
-              <li
-                key={s.id}
-                className="text-sm bg-green-50 text-green-700 border border-green-200 rounded-full px-3 py-1"
-              >
-                {s.first_name} {s.last_name}
+              <li key={s.id}>
+                <Link
+                  to={`/teacher/students/${s.id}`}
+                  className="block text-sm bg-green-50 text-green-700 border border-green-200 rounded-full px-3 py-1 hover:bg-green-100"
+                >
+                  {s.first_name} {s.last_name}
+                </Link>
               </li>
             ))}
           </ul>
@@ -68,7 +72,12 @@ export default function AttendanceGrid({ rows }) {
             {students.map((s) => (
               <tr key={s.id} className="border-t border-slate-100">
                 <td className="sticky left-0 bg-white px-3 py-2 whitespace-nowrap font-medium text-slate-800">
-                  {s.first_name} {s.last_name}
+                  <Link
+                    to={`/teacher/students/${s.id}`}
+                    className="hover:text-indigo-600 hover:underline"
+                  >
+                    {s.first_name} {s.last_name}
+                  </Link>
                 </td>
                 {sortedDates.map((date) => (
                   <td key={date} className="px-3 py-2 text-center">

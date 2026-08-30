@@ -5,6 +5,7 @@ import TeacherLayout from './pages/TeacherLayout.jsx'
 import DashboardPage from './pages/DashboardPage.jsx'
 import RosterPage from './pages/RosterPage.jsx'
 import DailyPasswordPage from './pages/DailyPasswordPage.jsx'
+import StudentCalendarPage from './pages/StudentCalendarPage.jsx'
 
 export default function App() {
   return (
@@ -15,6 +16,7 @@ export default function App() {
         <Route element={<TeacherLayout />}>
           <Route path="dashboard" element={<DashboardPage />} />
           <Route path="roster" element={<RosterPage />} />
+          <Route path="students/:id" element={<StudentCalendarPage />} />
           <Route path="password" element={<DailyPasswordPage />} />
         </Route>
       </Route>

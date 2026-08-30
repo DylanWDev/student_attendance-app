@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { apiDelete, apiGet, apiPost, apiPut } from '../libs/api.js'
 import StudentForm from '../components/StudentForm.jsx'
 import FriendlyError from '../components/FriendlyError.jsx'
@@ -69,9 +70,12 @@ export default function RosterPage() {
             ) : (
               <div key={s.id} className="p-4 flex items-center justify-between gap-4">
                 <div>
-                  <p className="font-medium text-slate-800">
+                  <Link
+                    to={`/teacher/students/${s.id}`}
+                    className="font-medium text-slate-800 hover:text-indigo-600 hover:underline"
+                  >
                     {s.first_name} {s.last_name}
-                  </p>
+                  </Link>
                   <p className="text-xs text-slate-500">ID: {s.student_number}</p>
                 </div>
                 <div className="flex gap-3 text-sm">
