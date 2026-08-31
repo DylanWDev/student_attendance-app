@@ -139,7 +139,7 @@ teacherRouter.get('/dashboard', async (req, res) => {
     new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
 
   const rows = await sql`
-    SELECT s.id, s.first_name, s.last_name, s.student_number, a.attendance_date, a.location_status
+    SELECT s.id, s.first_name, s.last_name, s.student_number, a.attendance_date, a.location_status, a.address
     FROM students s
     LEFT JOIN attendance a
       ON a.student_id = s.id AND a.attendance_date BETWEEN ${start} AND ${end}

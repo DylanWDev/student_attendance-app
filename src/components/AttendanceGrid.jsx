@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 
 function todayString() {
@@ -5,13 +6,22 @@ function todayString() {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
 }
 
+function cellLines(dayRecord) {
+  if (dayRecord.location_status !== 'verified') {
+    return ['Present (location not confirmed)']
+  }
+  // Only ever resolved for a verified (confirmed in-range) check-in — an unverified day's
+  // coordinates could point at a student's home, so no address line is shown for it.
+  return dayRecord.address ? ['Present', `📍 ${dayRecord.address}`] : ['Present', '📍 Address unavailable']
+}
+
 export default function AttendanceGrid({ rows }) {
   const today = todayString()
+  const [tip, setTip] = useState(null) // { lines, x, y, below }
 
   const studentsById = new Map()
   const dates = new Set()
-  const present = new Set() // `${studentId}|${date}`
-  const locationStatusByKey = new Map() // `${studentId}|${date}` -> 'verified' | 'unverified'
+  const byKey = new Map() // `${studentId}|${date}` -> { location_status, address }
 
   for (const row of rows) {
     if (!studentsById.has(row.id)) {
@@ -20,14 +30,27 @@ export default function AttendanceGrid({ rows }) {
     if (row.attendance_date) {
       dates.add(row.attendance_date)
       const key = `${row.id}|${row.attendance_date}`
-      present.add(key)
-      locationStatusByKey.set(key, row.location_status)
+      byKey.set(key, { location_status: row.location_status, address: row.address })
     }
   }
 
   const students = [...studentsById.values()]
   const sortedDates = [...dates].sort()
-  const presentToday = students.filter((s) => present.has(`${s.id}|${today}`))
+  const presentToday = students.filter((s) => byKey.has(`${s.id}|${today}`))
+
+  function showTip(e, lines) {
+    const r = e.currentTarget.getBoundingClientRect()
+    // Keep the tooltip on screen: clamp horizontally, and flip below the cell when there
+    // isn't room above it. Measure the longest line, not just the first.
+    const longest = Math.max(...lines.map((l) => l.length))
+    const halfWidth = longest * 3.4 + 10
+    const x = Math.min(
+      Math.max(r.left + r.width / 2, halfWidth + 4),
+      window.innerWidth - halfWidth - 4
+    )
+    const below = r.top < 40
+    setTip({ lines, x, y: below ? r.bottom + 6 : r.top - 6, below })
+  }
 
   if (students.length === 0) {
     return <p className="text-slate-500 text-sm">No students on the roster yet.</p>
@@ -84,19 +107,21 @@ export default function AttendanceGrid({ rows }) {
                 </td>
                 {sortedDates.map((date) => {
                   const key = `${s.id}|${date}`
-                  if (!present.has(key)) {
+                  const dayRecord = byKey.get(key)
+                  if (!dayRecord) {
                     return (
                       <td key={date} className="px-3 py-2 text-center">
                         <span className="text-slate-200">·</span>
                       </td>
                     )
                   }
-                  const verified = locationStatusByKey.get(key) === 'verified'
+                  const verified = dayRecord.location_status === 'verified'
                   return (
                     <td key={date} className="px-3 py-2 text-center">
                       <span
-                        className={verified ? 'text-green-600' : 'text-amber-500'}
-                        title={verified ? 'Present' : "Present — location wasn't confirmed"}
+                        onMouseEnter={(e) => showTip(e, cellLines(dayRecord))}
+                        onMouseLeave={() => setTip(null)}
+                        className={`cursor-default ${verified ? 'text-green-600' : 'text-amber-500'}`}
                       >
                         ✓
                       </span>
@@ -108,6 +133,21 @@ export default function AttendanceGrid({ rows }) {
           </tbody>
         </table>
       </div>
+
+      {tip && (
+        <div
+          className={`fixed z-50 pointer-events-none -translate-x-1/2 bg-slate-800 text-white text-xs rounded px-2 py-1 shadow-lg ${
+            tip.below ? '' : '-translate-y-full'
+          }`}
+          style={{ left: tip.x, top: tip.y }}
+        >
+          {tip.lines.map((line, i) => (
+            <div key={i} className="whitespace-nowrap">
+              {line}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { apiGet, apiPost } from '../libs/api.js'
 import { friendlyError } from '../libs/errorMessages.js'
 import FriendlyError from '../components/FriendlyError.jsx'
+import Spinner from '../components/Spinner.jsx'
 
 export default function ClassroomLocationPage() {
   const [current, setCurrent] = useState(undefined) // undefined = loading, null = unset
@@ -94,9 +95,10 @@ export default function ClassroomLocationPage() {
           type="button"
           onClick={handleUseCurrentLocation}
           disabled={locating}
-          className="w-full rounded-lg bg-indigo-600 text-white font-semibold py-2.5 hover:bg-indigo-700 disabled:opacity-60"
+          className="w-full rounded-lg bg-indigo-600 text-white font-semibold py-2.5 hover:bg-indigo-700 disabled:opacity-60 flex items-center justify-center gap-2"
         >
-          {locating ? 'Finding your location…' : 'Use my current location'}
+          {locating && <Spinner />}
+          {locating ? 'Loading' : 'Use my current location'}
         </button>
         <p className="text-xs text-slate-400">
           Stand in the classroom before pressing this — it sets the location check-ins are

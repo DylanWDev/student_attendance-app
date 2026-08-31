@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { apiPost } from '../libs/api.js'
 import { friendlyError } from '../libs/errorMessages.js'
 import FriendlyError from './FriendlyError.jsx'
+import Spinner from './Spinner.jsx'
 
 const emptyForm = { firstName: '', lastName: '', studentNumber: '', password: '' }
 
@@ -134,9 +135,10 @@ export default function CheckInForm() {
       <button
         type="submit"
         disabled={submitting}
-        className="w-full rounded-lg bg-indigo-600 text-white font-semibold py-3 text-base hover:bg-indigo-700 disabled:opacity-60"
+        className="w-full rounded-lg bg-indigo-600 text-white font-semibold py-3 text-base hover:bg-indigo-700 disabled:opacity-60 flex items-center justify-center gap-2"
       >
-        {locating ? 'Finding your location…' : submitting ? 'Checking in…' : "I'm here!"}
+        {locating && <Spinner />}
+        {locating ? 'Loading' : submitting ? 'Checking in…' : "I'm here!"}
       </button>
     </form>
   )
