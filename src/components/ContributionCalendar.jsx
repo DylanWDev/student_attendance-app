@@ -43,8 +43,11 @@ function dayLines(day, dayRecord, isFuture) {
     year: 'numeric',
   })
 
-  if (isFuture) return [pretty]
-  if (!dayRecord) return [`${pretty} — Absent`]
+  // Check the record before the future cutoff: the server stamps attendance_date on its
+  // own clock (UTC on Vercel), while `isFuture` is computed from the browser's local
+  // time. Near midnight those can disagree, and a same-day check-in must never be shown
+  // as an empty future day just because the client's clock hasn't caught up yet.
+  if (!dayRecord) return isFuture ? [pretty] : [`${pretty} — Absent`]
 
   const lines = [
     dayRecord.locationStatus === 'verified'
