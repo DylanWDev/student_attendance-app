@@ -45,4 +45,29 @@ await sql`
   )
 `
 
+await sql`
+  CREATE TABLE IF NOT EXISTS classroom_location (
+    id         TEXT PRIMARY KEY,
+    latitude   DOUBLE PRECISION NOT NULL,
+    longitude  DOUBLE PRECISION NOT NULL,
+    radius_m   INTEGER NOT NULL DEFAULT 150,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+  )
+`
+
+await sql`ALTER TABLE attendance ADD COLUMN IF NOT EXISTS latitude        DOUBLE PRECISION`
+await sql`ALTER TABLE attendance ADD COLUMN IF NOT EXISTS longitude       DOUBLE PRECISION`
+await sql`ALTER TABLE attendance ADD COLUMN IF NOT EXISTS accuracy_m      DOUBLE PRECISION`
+await sql`ALTER TABLE attendance ADD COLUMN IF NOT EXISTS distance_m      DOUBLE PRECISION`
+await sql`ALTER TABLE attendance ADD COLUMN IF NOT EXISTS location_status TEXT NOT NULL DEFAULT 'unverified'`
+await sql`ALTER TABLE attendance ADD COLUMN IF NOT EXISTS address TEXT`
+
+await sql`
+  CREATE TABLE IF NOT EXISTS geocode_cache (
+    coord_key  TEXT PRIMARY KEY,
+    address    TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+  )
+`
+
 console.log('Migration complete.')

@@ -5,10 +5,32 @@ import FriendlyError from './FriendlyError.jsx'
 
 const emptyForm = { firstName: '', lastName: '', studentNumber: '', password: '' }
 
+// Resolves to null on every failure — permission denied, timeout, or geolocation being
+// unavailable on an insecure origin. A location problem must never block the check-in.
+function getLocation() {
+  return new Promise((resolve) => {
+    if (!navigator.geolocation) {
+      resolve(null)
+      return
+    }
+    navigator.geolocation.getCurrentPosition(
+      (position) =>
+        resolve({
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+          accuracy: position.coords.accuracy,
+        }),
+      () => resolve(null),
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+    )
+  })
+}
+
 export default function CheckInForm() {
   const [form, setForm] = useState(emptyForm)
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [locating, setLocating] = useState(false)
   const [welcomeName, setWelcomeName] = useState('')
 
   function updateField(field) {
@@ -19,8 +41,11 @@ export default function CheckInForm() {
     e.preventDefault()
     setError('')
     setSubmitting(true)
+    setLocating(true)
+    const location = await getLocation()
+    setLocating(false)
     try {
-      const result = await apiPost('/check-in', form)
+      const result = await apiPost('/check-in', { ...form, ...location })
       setWelcomeName(result.firstName)
       setForm(emptyForm)
     } catch (err) {
@@ -111,7 +136,7 @@ export default function CheckInForm() {
         disabled={submitting}
         className="w-full rounded-lg bg-indigo-600 text-white font-semibold py-3 text-base hover:bg-indigo-700 disabled:opacity-60"
       >
-        {submitting ? 'Checking in…' : "I'm here!"}
+        {locating ? 'Finding your location…' : submitting ? 'Checking in…' : "I'm here!"}
       </button>
     </form>
   )

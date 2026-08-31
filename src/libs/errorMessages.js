@@ -8,6 +8,8 @@ const ERROR_MESSAGES = {
   DUPLICATE_STUDENT_NUMBER: 'That student ID is already used by another student.',
   STUDENT_NOT_FOUND: 'That student no longer exists.',
   PASSWORD_REQUIRED: "Password can't be empty.",
+  OUT_OF_RANGE: 'You need to be in the classroom to check in. If you are here, ask your teacher.',
+  INVALID_LOCATION: 'That location looks invalid — check the coordinates and radius.',
 }
 
 export function friendlyError(err) {

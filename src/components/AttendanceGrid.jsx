@@ -11,6 +11,7 @@ export default function AttendanceGrid({ rows }) {
   const studentsById = new Map()
   const dates = new Set()
   const present = new Set() // `${studentId}|${date}`
+  const locationStatusByKey = new Map() // `${studentId}|${date}` -> 'verified' | 'unverified'
 
   for (const row of rows) {
     if (!studentsById.has(row.id)) {
@@ -18,7 +19,9 @@ export default function AttendanceGrid({ rows }) {
     }
     if (row.attendance_date) {
       dates.add(row.attendance_date)
-      present.add(`${row.id}|${row.attendance_date}`)
+      const key = `${row.id}|${row.attendance_date}`
+      present.add(key)
+      locationStatusByKey.set(key, row.location_status)
     }
   }
 
@@ -79,15 +82,27 @@ export default function AttendanceGrid({ rows }) {
                     {s.first_name} {s.last_name}
                   </Link>
                 </td>
-                {sortedDates.map((date) => (
-                  <td key={date} className="px-3 py-2 text-center">
-                    {present.has(`${s.id}|${date}`) ? (
-                      <span className="text-green-600">✓</span>
-                    ) : (
-                      <span className="text-slate-200">·</span>
-                    )}
-                  </td>
-                ))}
+                {sortedDates.map((date) => {
+                  const key = `${s.id}|${date}`
+                  if (!present.has(key)) {
+                    return (
+                      <td key={date} className="px-3 py-2 text-center">
+                        <span className="text-slate-200">·</span>
+                      </td>
+                    )
+                  }
+                  const verified = locationStatusByKey.get(key) === 'verified'
+                  return (
+                    <td key={date} className="px-3 py-2 text-center">
+                      <span
+                        className={verified ? 'text-green-600' : 'text-amber-500'}
+                        title={verified ? 'Present' : "Present — location wasn't confirmed"}
+                      >
+                        ✓
+                      </span>
+                    </td>
+                  )
+                })}
               </tr>
             ))}
           </tbody>

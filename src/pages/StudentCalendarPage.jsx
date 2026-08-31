@@ -36,7 +36,7 @@ export default function StudentCalendarPage() {
   if (current?.error) return <FriendlyError message={current.error} />
   if (!current) return <p className="text-slate-500 text-sm">Loading…</p>
 
-  const { student, dates } = current.data
+  const { student, days } = current.data
 
   return (
     <div className="space-y-4">
@@ -52,15 +52,15 @@ export default function StudentCalendarPage() {
           </span>
         </h2>
         <p className="text-sm text-slate-500">
-          {dates.length} {dates.length === 1 ? 'day' : 'days'} present
-          {dates.length > 0 && ` since ${dates[0]}`}
+          {days.length} {days.length === 1 ? 'day' : 'days'} present
+          {days.length > 0 && ` since ${days[0].date}`}
         </p>
       </div>
 
-      {dates.length === 0 ? (
+      {days.length === 0 ? (
         <p className="text-sm text-slate-400">No attendance recorded yet.</p>
       ) : (
-        <ContributionCalendar dates={dates} />
+        <ContributionCalendar days={days} />
       )}
     </div>
   )
