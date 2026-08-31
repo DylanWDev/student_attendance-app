@@ -116,11 +116,20 @@ teacherRouter.get('/students/:id/attendance', async (req, res) => {
   }
 
   const rows = await sql`
-    SELECT attendance_date FROM attendance
+    SELECT attendance_date, address, location_status, accuracy_m, distance_m FROM attendance
     WHERE student_id = ${student.id}
     ORDER BY attendance_date
   `
-  res.json({ student, dates: rows.map((row) => row.attendance_date) })
+  res.json({
+    student,
+    days: rows.map((row) => ({
+      date: row.attendance_date,
+      address: row.address,
+      locationStatus: row.location_status,
+      accuracyM: row.accuracy_m,
+      distanceM: row.distance_m,
+    })),
+  })
 })
 
 teacherRouter.get('/dashboard', async (req, res) => {
@@ -130,7 +139,7 @@ teacherRouter.get('/dashboard', async (req, res) => {
     new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
 
   const rows = await sql`
-    SELECT s.id, s.first_name, s.last_name, s.student_number, a.attendance_date
+    SELECT s.id, s.first_name, s.last_name, s.student_number, a.attendance_date, a.location_status
     FROM students s
     LEFT JOIN attendance a
       ON a.student_id = s.id AND a.attendance_date BETWEEN ${start} AND ${end}
@@ -138,6 +147,35 @@ teacherRouter.get('/dashboard', async (req, res) => {
     ORDER BY s.last_name, s.first_name, a.attendance_date
   `
   res.json(rows)
+})
+
+teacherRouter.get('/classroom-location', async (req, res) => {
+  const [row] = await sql`SELECT * FROM classroom_location WHERE id = 'default'`
+  res.json(row ?? null)
+})
+
+teacherRouter.post('/classroom-location', async (req, res) => {
+  const { latitude, longitude, radiusM } = req.body ?? {}
+  const validLat = typeof latitude === 'number' && latitude >= -90 && latitude <= 90
+  const validLon = typeof longitude === 'number' && longitude >= -180 && longitude <= 180
+  const validRadius = Number.isInteger(radiusM) && radiusM > 0 && radiusM <= 5000
+
+  if (!validLat || !validLon || !validRadius) {
+    res.status(400).json({ error: 'INVALID_LOCATION' })
+    return
+  }
+
+  const [row] = await sql`
+    INSERT INTO classroom_location (id, latitude, longitude, radius_m)
+    VALUES ('default', ${latitude}, ${longitude}, ${radiusM})
+    ON CONFLICT (id) DO UPDATE SET
+      latitude = excluded.latitude,
+      longitude = excluded.longitude,
+      radius_m = excluded.radius_m,
+      updated_at = now()
+    RETURNING *
+  `
+  res.json(row)
 })
 
 teacherRouter.get('/daily-password', async (req, res) => {

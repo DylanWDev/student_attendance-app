@@ -35,36 +35,54 @@ function buildWeeks(firstAttended) {
   return weeks
 }
 
-function dayLabel(day, isPresent, isFuture) {
+function dayLines(day, dayRecord, isFuture) {
   const pretty = day.toLocaleDateString(undefined, {
     weekday: 'short',
     month: 'short',
     day: 'numeric',
     year: 'numeric',
   })
-  return isFuture ? pretty : `${pretty} — ${isPresent ? 'Present' : 'Absent'}`
+
+  if (isFuture) return [pretty]
+  if (!dayRecord) return [`${pretty} — Absent`]
+
+  const lines = [
+    dayRecord.locationStatus === 'verified'
+      ? `${pretty} — Present`
+      : `${pretty} — Present (location not confirmed)`,
+  ]
+
+  // Only ever resolved for a verified (confirmed in-range) day — an unverified day's
+  // coordinates could point at a student's home, so no address line is shown for it.
+  if (dayRecord.locationStatus === 'verified') {
+    lines.push(dayRecord.address ? `📍 ${dayRecord.address}` : '📍 Address unavailable')
+  }
+
+  return lines
 }
 
-export default function ContributionCalendar({ dates }) {
-  const [tip, setTip] = useState(null) // { text, x, y, below }
+export default function ContributionCalendar({ days }) {
+  const [tip, setTip] = useState(null) // { lines, x, y, below }
 
-  if (dates.length === 0) return null
+  if (days.length === 0) return null
 
-  const present = new Set(dates)
+  const byDate = new Map(days.map((d) => [d.date, d]))
   const today = toDateString(new Date())
-  const weeks = buildWeeks(parseLocal(dates[0]))
+  const weeks = buildWeeks(parseLocal(days[0].date))
+  const showAttribution = days.some((d) => d.locationStatus === 'verified' && d.address)
 
-  function showTip(e, text) {
+  function showTip(e, lines) {
     const r = e.currentTarget.getBoundingClientRect()
     // Keep the tooltip on screen: clamp horizontally, and flip below the square when
-    // there isn't room above it.
-    const halfWidth = text.length * 3.4 + 10
+    // there isn't room above it. Measure the longest line, not just the first.
+    const longest = Math.max(...lines.map((l) => l.length))
+    const halfWidth = longest * 3.4 + 10
     const x = Math.min(
       Math.max(r.left + r.width / 2, halfWidth + 4),
       window.innerWidth - halfWidth - 4
     )
     const below = r.top < 40
-    setTip({ text, x, y: below ? r.bottom + 6 : r.top - 6, below })
+    setTip({ lines, x, y: below ? r.bottom + 6 : r.top - 6, below })
   }
 
   return (
@@ -82,14 +100,14 @@ export default function ContributionCalendar({ dates }) {
                 {week.map((day, di) => {
                   const ds = toDateString(day)
                   const isFuture = ds > today
-                  const isPresent = present.has(ds)
+                  const dayRecord = byDate.get(ds)
                   return (
                     <div
                       key={di}
-                      onMouseEnter={(e) => showTip(e, dayLabel(day, isPresent, isFuture))}
+                      onMouseEnter={(e) => showTip(e, dayLines(day, dayRecord, isFuture))}
                       onMouseLeave={() => setTip(null)}
                       className={`w-4 h-4 rounded-sm cursor-default hover:ring-2 hover:ring-slate-400 ${
-                        isPresent ? 'bg-green-500' : isFuture ? 'bg-slate-50' : 'bg-slate-200'
+                        dayRecord ? 'bg-green-500' : isFuture ? 'bg-slate-50' : 'bg-slate-200'
                       }`}
                     />
                   )
@@ -106,15 +124,24 @@ export default function ContributionCalendar({ dates }) {
         <span className="w-4 h-4 rounded-sm bg-green-500 inline-block" />
         <span>Present</span>
       </div>
+      {showAttribution && (
+        <p className="text-[11px] text-slate-400">
+          Location data © <a href="https://www.openstreetmap.org/copyright" className="underline" target="_blank" rel="noreferrer">OpenStreetMap</a> contributors
+        </p>
+      )}
 
       {tip && (
         <div
-          className={`fixed z-50 pointer-events-none -translate-x-1/2 bg-slate-800 text-white text-xs rounded px-2 py-1 whitespace-nowrap shadow-lg ${
+          className={`fixed z-50 pointer-events-none -translate-x-1/2 bg-slate-800 text-white text-xs rounded px-2 py-1 shadow-lg ${
             tip.below ? '' : '-translate-y-full'
           }`}
           style={{ left: tip.x, top: tip.y }}
         >
-          {tip.text}
+          {tip.lines.map((line, i) => (
+            <div key={i} className="whitespace-nowrap">
+              {line}
+            </div>
+          ))}
         </div>
       )}
     </div>
