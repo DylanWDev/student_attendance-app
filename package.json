@@ -9,6 +9,7 @@
     "start": "node server/index.js",
     "db:migrate": "node server/migrate.js",
     "db:backfill-geocode": "node server/backfill-geocode.js",
+    "db:seed-roster": "node server/seed-roster.js",
     "lint": "eslint .",
     "preview": "vite preview"
   },
