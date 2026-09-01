@@ -49,9 +49,14 @@ checkinRouter.post('/check-in', async (req, res) => {
 
   const [classroom] = await sql`SELECT * FROM classroom_location WHERE id = 'default'`
 
-  let locationStatus = 'unverified'
   let distance = null
   const hasCoords = typeof latitude === 'number' && typeof longitude === 'number'
+
+  // Three distinct outcomes: coordinates confirmed inside the geofence ('verified'),
+  // coordinates that could not be checked — no classroom set, or accuracy too poor
+  // ('unverified'), and no coordinates at all because location was off or denied
+  // ('no_location'). Only the last one is the student's own doing.
+  let locationStatus = hasCoords ? 'unverified' : 'no_location'
 
   if (classroom && hasCoords) {
     distance = distanceMeters(latitude, longitude, classroom.latitude, classroom.longitude)

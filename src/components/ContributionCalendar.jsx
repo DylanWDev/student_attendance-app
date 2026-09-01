@@ -52,7 +52,9 @@ function dayLines(day, dayRecord, isFuture) {
   const lines = [
     dayRecord.locationStatus === 'verified'
       ? `${pretty} — Present`
-      : `${pretty} — Present (location not confirmed)`,
+      : dayRecord.locationStatus === 'no_location'
+        ? `${pretty} — Present (no location shared)`
+        : `${pretty} — Present (location not confirmed)`,
   ]
 
   // Only ever resolved for a verified (confirmed in-range) day — an unverified day's
@@ -62,6 +64,12 @@ function dayLines(day, dayRecord, isFuture) {
   }
 
   return lines
+}
+
+const SQUARE_COLOR = {
+  verified: 'bg-green-500',
+  unverified: 'bg-amber-400',
+  no_location: 'bg-red-400',
 }
 
 export default function ContributionCalendar({ days }) {
@@ -110,7 +118,11 @@ export default function ContributionCalendar({ days }) {
                       onMouseEnter={(e) => showTip(e, dayLines(day, dayRecord, isFuture))}
                       onMouseLeave={() => setTip(null)}
                       className={`w-4 h-4 rounded-sm cursor-default hover:ring-2 hover:ring-slate-400 ${
-                        dayRecord ? 'bg-green-500' : isFuture ? 'bg-slate-50' : 'bg-slate-200'
+                        dayRecord
+                          ? SQUARE_COLOR[dayRecord.locationStatus] ?? SQUARE_COLOR.unverified
+                          : isFuture
+                            ? 'bg-slate-50'
+                            : 'bg-slate-200'
                       }`}
                     />
                   )
@@ -126,6 +138,10 @@ export default function ContributionCalendar({ days }) {
         <span className="w-4 h-4 rounded-sm bg-slate-200 inline-block" />
         <span className="w-4 h-4 rounded-sm bg-green-500 inline-block" />
         <span>Present</span>
+        <span className="w-4 h-4 rounded-sm bg-amber-400 inline-block" />
+        <span>Not confirmed</span>
+        <span className="w-4 h-4 rounded-sm bg-red-400 inline-block" />
+        <span>No location</span>
       </div>
       {showAttribution && (
         <p className="text-[11px] text-slate-400">

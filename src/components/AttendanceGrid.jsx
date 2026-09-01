@@ -6,7 +6,20 @@ function todayString() {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
 }
 
+const STATUS_STYLE = {
+  verified: { glyph: '✓', className: 'text-green-600' },
+  unverified: { glyph: '✓', className: 'text-amber-500' },
+  no_location: { glyph: '⚑', className: 'text-red-500' },
+}
+
+function statusStyle(locationStatus) {
+  return STATUS_STYLE[locationStatus] ?? STATUS_STYLE.unverified
+}
+
 function cellLines(dayRecord) {
+  if (dayRecord.location_status === 'no_location') {
+    return ['Present — no location shared', 'Student had location turned off']
+  }
   if (dayRecord.location_status !== 'verified') {
     return ['Present (location not confirmed)']
   }
@@ -37,6 +50,12 @@ export default function AttendanceGrid({ rows }) {
   const students = [...studentsById.values()]
   const sortedDates = [...dates].sort()
   const presentToday = students.filter((s) => byKey.has(`${s.id}|${today}`))
+  const noLocationToday = presentToday.filter(
+    (s) => byKey.get(`${s.id}|${today}`)?.location_status === 'no_location'
+  ).length
+  const noLocationInRange = [...byKey.values()].filter(
+    (record) => record.location_status === 'no_location'
+  ).length
 
   function showTip(e, lines) {
     const r = e.currentTarget.getBoundingClientRect()
@@ -66,17 +85,37 @@ export default function AttendanceGrid({ rows }) {
           <p className="text-sm text-slate-400">No check-ins yet today.</p>
         ) : (
           <ul className="flex flex-wrap gap-2">
-            {presentToday.map((s) => (
-              <li key={s.id}>
-                <Link
-                  to={`/teacher/students/${s.id}`}
-                  className="block text-sm bg-green-50 text-green-700 border border-green-200 rounded-full px-3 py-1 hover:bg-green-100"
-                >
-                  {s.first_name} {s.last_name}
-                </Link>
-              </li>
-            ))}
+            {presentToday.map((s) => {
+              const status = byKey.get(`${s.id}|${today}`)?.location_status
+              const chipClass =
+                status === 'no_location'
+                  ? 'bg-red-50 text-red-700 border-red-200 hover:bg-red-100'
+                  : status === 'unverified'
+                    ? 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100'
+                    : 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100'
+              return (
+                <li key={s.id}>
+                  <Link
+                    to={`/teacher/students/${s.id}`}
+                    className={`block text-sm border rounded-full px-3 py-1 ${chipClass}`}
+                  >
+                    {status === 'no_location' ? '⚑ ' : ''}
+                    {s.first_name} {s.last_name}
+                  </Link>
+                </li>
+              )
+            })}
           </ul>
+        )}
+        {noLocationToday > 0 && (
+          <p className="text-xs text-red-600 mt-2">
+            ⚑ {noLocationToday} checked in today without sharing location
+          </p>
+        )}
+        {noLocationInRange > 0 && (
+          <p className="text-xs text-red-600 mt-1">
+            {noLocationInRange} check-ins in this range have no location
+          </p>
         )}
       </div>
 
@@ -115,15 +154,16 @@ export default function AttendanceGrid({ rows }) {
                       </td>
                     )
                   }
-                  const verified = dayRecord.location_status === 'verified'
+                  const { glyph, className } = statusStyle(dayRecord.location_status)
                   return (
                     <td key={date} className="px-3 py-2 text-center">
                       <span
                         onMouseEnter={(e) => showTip(e, cellLines(dayRecord))}
                         onMouseLeave={() => setTip(null)}
-                        className={`cursor-default ${verified ? 'text-green-600' : 'text-amber-500'}`}
+                        title={cellLines(dayRecord).join(' — ')}
+                        className={`cursor-default ${className}`}
                       >
-                        ✓
+                        {glyph}
                       </span>
                     </td>
                   )
@@ -132,6 +172,15 @@ export default function AttendanceGrid({ rows }) {
             ))}
           </tbody>
         </table>
+      </div>
+
+      <div className="flex items-center gap-3 text-xs text-slate-500">
+        <span className="text-green-600">✓</span>
+        <span>Location confirmed</span>
+        <span className="text-amber-500">✓</span>
+        <span>Location not confirmed</span>
+        <span className="text-red-500">⚑</span>
+        <span>No location shared</span>
       </div>
 
       {tip && (

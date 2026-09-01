@@ -70,4 +70,11 @@ await sql`
   )
 `
 
+// Rows recorded before 'no_location' existed: a NULL latitude means the client never
+// sent coordinates, which is exactly the new status.
+await sql`
+  UPDATE attendance SET location_status = 'no_location'
+  WHERE location_status = 'unverified' AND latitude IS NULL
+`
+
 console.log('Migration complete.')
