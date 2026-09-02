@@ -37,7 +37,6 @@ export default function StudentCalendarPage() {
   if (!current) return <p className="text-slate-500 text-sm">Loading…</p>
 
   const { student, days } = current.data
-  const noLocationCount = days.filter((d) => d.locationStatus === 'no_location').length
 
   return (
     <div className="space-y-4">
@@ -55,7 +54,6 @@ export default function StudentCalendarPage() {
         <p className="text-sm text-slate-500">
           {days.length} {days.length === 1 ? 'day' : 'days'} present
           {days.length > 0 && ` since ${days[0].date}`}
-          {noLocationCount > 0 && ` · ${noLocationCount} without location`}
         </p>
       </div>
 
