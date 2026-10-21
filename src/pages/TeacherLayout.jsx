@@ -6,7 +6,6 @@ const tabs = [
   { to: '/teacher/dashboard', label: 'Dashboard' },
   { to: '/teacher/roster', label: 'Roster' },
   { to: '/teacher/password', label: "Today's Password" },
-  { to: '/teacher/location', label: 'Classroom' },
 ]
 
 export default function TeacherLayout() {

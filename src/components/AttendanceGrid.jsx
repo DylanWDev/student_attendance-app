@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { Link } from 'react-router-dom'
 
 function todayString() {
@@ -6,35 +5,12 @@ function todayString() {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
 }
 
-const STATUS_STYLE = {
-  verified: { glyph: '✓', className: 'text-green-600' },
-  unverified: { glyph: '✓', className: 'text-amber-500' },
-  no_location: { glyph: '⚑', className: 'text-red-500' },
-}
-
-function statusStyle(locationStatus) {
-  return STATUS_STYLE[locationStatus] ?? STATUS_STYLE.unverified
-}
-
-function cellLines(dayRecord) {
-  if (dayRecord.location_status === 'no_location') {
-    return ['Present — no location shared', 'Student had location turned off']
-  }
-  if (dayRecord.location_status !== 'verified') {
-    return ['Present (location not confirmed)']
-  }
-  // Only ever resolved for a verified (confirmed in-range) check-in — an unverified day's
-  // coordinates could point at a student's home, so no address line is shown for it.
-  return dayRecord.address ? ['Present', `📍 ${dayRecord.address}`] : ['Present', '📍 Address unavailable']
-}
-
 export default function AttendanceGrid({ rows }) {
   const today = todayString()
-  const [tip, setTip] = useState(null) // { lines, x, y, below }
 
   const studentsById = new Map()
   const dates = new Set()
-  const byKey = new Map() // `${studentId}|${date}` -> { location_status, address }
+  const presentKeys = new Set() // `${studentId}|${date}`
 
   for (const row of rows) {
     if (!studentsById.has(row.id)) {
@@ -42,34 +18,13 @@ export default function AttendanceGrid({ rows }) {
     }
     if (row.attendance_date) {
       dates.add(row.attendance_date)
-      const key = `${row.id}|${row.attendance_date}`
-      byKey.set(key, { location_status: row.location_status, address: row.address })
+      presentKeys.add(`${row.id}|${row.attendance_date}`)
     }
   }
 
   const students = [...studentsById.values()]
   const sortedDates = [...dates].sort()
-  const presentToday = students.filter((s) => byKey.has(`${s.id}|${today}`))
-  const noLocationToday = presentToday.filter(
-    (s) => byKey.get(`${s.id}|${today}`)?.location_status === 'no_location'
-  ).length
-  const noLocationInRange = [...byKey.values()].filter(
-    (record) => record.location_status === 'no_location'
-  ).length
-
-  function showTip(e, lines) {
-    const r = e.currentTarget.getBoundingClientRect()
-    // Keep the tooltip on screen: clamp horizontally, and flip below the cell when there
-    // isn't room above it. Measure the longest line, not just the first.
-    const longest = Math.max(...lines.map((l) => l.length))
-    const halfWidth = longest * 3.4 + 10
-    const x = Math.min(
-      Math.max(r.left + r.width / 2, halfWidth + 4),
-      window.innerWidth - halfWidth - 4
-    )
-    const below = r.top < 40
-    setTip({ lines, x, y: below ? r.bottom + 6 : r.top - 6, below })
-  }
+  const presentToday = students.filter((s) => presentKeys.has(`${s.id}|${today}`))
 
   if (students.length === 0) {
     return <p className="text-slate-500 text-sm">No students on the roster yet.</p>
@@ -85,37 +40,17 @@ export default function AttendanceGrid({ rows }) {
           <p className="text-sm text-slate-400">No check-ins yet today.</p>
         ) : (
           <ul className="flex flex-wrap gap-2">
-            {presentToday.map((s) => {
-              const status = byKey.get(`${s.id}|${today}`)?.location_status
-              const chipClass =
-                status === 'no_location'
-                  ? 'bg-red-50 text-red-700 border-red-200 hover:bg-red-100'
-                  : status === 'unverified'
-                    ? 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100'
-                    : 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100'
-              return (
-                <li key={s.id}>
-                  <Link
-                    to={`/teacher/students/${s.id}`}
-                    className={`block text-sm border rounded-full px-3 py-1 ${chipClass}`}
-                  >
-                    {status === 'no_location' ? '⚑ ' : ''}
-                    {s.first_name} {s.last_name}
-                  </Link>
-                </li>
-              )
-            })}
+            {presentToday.map((s) => (
+              <li key={s.id}>
+                <Link
+                  to={`/teacher/students/${s.id}`}
+                  className="block text-sm border rounded-full px-3 py-1 bg-green-50 text-green-700 border-green-200 hover:bg-green-100"
+                >
+                  {s.first_name} {s.last_name}
+                </Link>
+              </li>
+            ))}
           </ul>
-        )}
-        {noLocationToday > 0 && (
-          <p className="text-xs text-red-600 mt-2">
-            ⚑ {noLocationToday} checked in today without sharing location
-          </p>
-        )}
-        {noLocationInRange > 0 && (
-          <p className="text-xs text-red-600 mt-1">
-            {noLocationInRange} check-ins in this range have no location
-          </p>
         )}
       </div>
 
@@ -144,30 +79,17 @@ export default function AttendanceGrid({ rows }) {
                     {s.first_name} {s.last_name}
                   </Link>
                 </td>
-                {sortedDates.map((date) => {
-                  const key = `${s.id}|${date}`
-                  const dayRecord = byKey.get(key)
-                  if (!dayRecord) {
-                    return (
-                      <td key={date} className="px-3 py-2 text-center">
-                        <span className="text-slate-200">·</span>
-                      </td>
-                    )
-                  }
-                  const { glyph, className } = statusStyle(dayRecord.location_status)
-                  return (
-                    <td key={date} className="px-3 py-2 text-center">
-                      <span
-                        onMouseEnter={(e) => showTip(e, cellLines(dayRecord))}
-                        onMouseLeave={() => setTip(null)}
-                        title={cellLines(dayRecord).join(' — ')}
-                        className={`cursor-default ${className}`}
-                      >
-                        {glyph}
+                {sortedDates.map((date) => (
+                  <td key={date} className="px-3 py-2 text-center">
+                    {presentKeys.has(`${s.id}|${date}`) ? (
+                      <span title="Present" className="cursor-default text-green-600">
+                        ✓
                       </span>
-                    </td>
-                  )
-                })}
+                    ) : (
+                      <span className="text-slate-200">·</span>
+                    )}
+                  </td>
+                ))}
               </tr>
             ))}
           </tbody>
@@ -176,27 +98,10 @@ export default function AttendanceGrid({ rows }) {
 
       <div className="flex items-center gap-3 text-xs text-slate-500">
         <span className="text-green-600">✓</span>
-        <span>Location confirmed</span>
-        <span className="text-amber-500">✓</span>
-        <span>Location not confirmed</span>
-        <span className="text-red-500">⚑</span>
-        <span>No location shared</span>
+        <span>Present</span>
+        <span className="text-slate-200">·</span>
+        <span>Absent</span>
       </div>
-
-      {tip && (
-        <div
-          className={`fixed z-50 pointer-events-none -translate-x-1/2 bg-slate-800 text-white text-xs rounded px-2 py-1 shadow-lg ${
-            tip.below ? '' : '-translate-y-full'
-          }`}
-          style={{ left: tip.x, top: tip.y }}
-        >
-          {tip.lines.map((line, i) => (
-            <div key={i} className="whitespace-nowrap">
-              {line}
-            </div>
-          ))}
-        </div>
-      )}
     </div>
   )
 }
