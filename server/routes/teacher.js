@@ -116,13 +116,13 @@ teacherRouter.get('/students/:id/attendance', async (req, res) => {
   }
 
   const rows = await sql`
-    SELECT attendance_date, attendance_time FROM attendance
+    SELECT attendance_date, created_at FROM attendance
     WHERE student_id = ${student.id}
     ORDER BY attendance_date
   `
   res.json({
     student,
-    days: rows.map((row) => ({ date: row.attendance_date, time: row.attendance_time })),
+    days: rows.map((row) => ({ date: row.attendance_date, checkedInAt: row.created_at })),
   })
 })
 
@@ -132,16 +132,14 @@ function isValidDate(value) {
   return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === value
 }
 
-function isValidTime(value) {
-  return /^([01]\d|2[0-3]):[0-5]\d$/.test(value ?? '')
-}
-
-// Teacher override: mark a student present on any date, optionally at a specific time.
-// Idempotent — setting an existing day just updates its time.
+// Teacher override: mark a student present on any date, optionally at a specific moment
+// (`at`, an ISO timestamp built by the browser so the teacher's time zone is respected).
+// The moment is stored in created_at, which is also what a self check-in records.
+// Idempotent — marking an already-present day only changes its time when `at` is given.
 teacherRouter.put('/students/:id/attendance/:date', async (req, res) => {
   const { date } = req.params
-  const time = req.body?.time || null
-  if (!isValidDate(date) || (time !== null && !isValidTime(time))) {
+  const at = req.body?.at ? new Date(req.body.at) : null
+  if (!isValidDate(date) || (at && Number.isNaN(at.getTime()))) {
     res.status(400).json({ error: 'INVALID_DATE_OR_TIME' })
     return
   }
@@ -152,12 +150,13 @@ teacherRouter.put('/students/:id/attendance/:date', async (req, res) => {
     return
   }
 
-  await sql`
-    INSERT INTO attendance (id, student_id, attendance_date, attendance_time)
-    VALUES (${randomUUID()}, ${student.id}, ${date}, ${time})
-    ON CONFLICT (student_id, attendance_date) DO UPDATE SET attendance_time = excluded.attendance_time
+  const [row] = await sql`
+    INSERT INTO attendance (id, student_id, attendance_date, created_at)
+    VALUES (${randomUUID()}, ${student.id}, ${date}, COALESCE(${at?.toISOString() ?? null}::timestamptz, now()))
+    ON CONFLICT (student_id, attendance_date) DO UPDATE SET created_at = COALESCE(${at?.toISOString() ?? null}::timestamptz, attendance.created_at)
+    RETURNING created_at
   `
-  res.json({ date, time })
+  res.json({ date, checkedInAt: row.created_at })
 })
 
 // Teacher override: mark a student absent on a date by removing that day's record.

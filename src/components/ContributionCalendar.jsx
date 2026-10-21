@@ -47,7 +47,13 @@ function dayLine(day, dayRecord, isFuture) {
   // own clock (UTC on Vercel), while `isFuture` is computed from the browser's local
   // time. Near midnight those can disagree, and a same-day check-in must never be shown
   // as an empty future day just because the client's clock hasn't caught up yet.
-  if (dayRecord) return `${pretty} — Present${dayRecord.time ? ` at ${dayRecord.time}` : ''}`
+  if (dayRecord) {
+    const time = new Date(dayRecord.checkedInAt).toLocaleTimeString(undefined, {
+      hour: 'numeric',
+      minute: '2-digit',
+    })
+    return `${pretty} — Present at ${time}`
+  }
   return isFuture ? pretty : `${pretty} — Absent`
 }
 

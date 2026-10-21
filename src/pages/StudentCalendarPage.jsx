@@ -59,7 +59,11 @@ export default function StudentCalendarPage() {
   }
 
   const markPresent = () =>
-    save(() => apiPut(`/teacher/students/${id}/attendance/${date}`, { time: time || null }))
+    save(() =>
+      apiPut(`/teacher/students/${id}/attendance/${date}`, {
+        at: time ? new Date(`${date}T${time}`).toISOString() : null,
+      })
+    )
   const markAbsent = () => save(() => apiDelete(`/teacher/students/${id}/attendance/${date}`))
 
   const current = result?.id === id ? result : null
