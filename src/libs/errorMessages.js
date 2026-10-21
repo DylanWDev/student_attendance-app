@@ -7,6 +7,7 @@ const ERROR_MESSAGES = {
   NOT_AUTHENTICATED: 'Your session expired — please log in again.',
   DUPLICATE_STUDENT_NUMBER: 'That student ID is already used by another student.',
   STUDENT_NOT_FOUND: 'That student no longer exists.',
+  INVALID_DATE_OR_TIME: 'Pick a valid date and time.',
   PASSWORD_REQUIRED: "Password can't be empty.",
 }
 

@@ -45,6 +45,10 @@ await sql`
   )
 `
 
+// Wall-clock HH:MM, like attendance_date. Set when the teacher records attendance by hand;
+// NULL for self check-ins, whose time is just created_at.
+await sql`ALTER TABLE attendance ADD COLUMN IF NOT EXISTS attendance_time TEXT`
+
 // The location feature was removed as too intrusive. These drops erase every coordinate,
 // distance, and resolved address the app ever recorded; the attendance rows themselves —
 // who was present on which day — are untouched. Kept here rather than deleted outright so

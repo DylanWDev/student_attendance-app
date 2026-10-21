@@ -116,14 +116,60 @@ teacherRouter.get('/students/:id/attendance', async (req, res) => {
   }
 
   const rows = await sql`
-    SELECT attendance_date FROM attendance
+    SELECT attendance_date, attendance_time FROM attendance
     WHERE student_id = ${student.id}
     ORDER BY attendance_date
   `
   res.json({
     student,
-    days: rows.map((row) => ({ date: row.attendance_date })),
+    days: rows.map((row) => ({ date: row.attendance_date, time: row.attendance_time })),
   })
+})
+
+function isValidDate(value) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value ?? '')) return false
+  const d = new Date(`${value}T00:00:00Z`)
+  return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === value
+}
+
+function isValidTime(value) {
+  return /^([01]\d|2[0-3]):[0-5]\d$/.test(value ?? '')
+}
+
+// Teacher override: mark a student present on any date, optionally at a specific time.
+// Idempotent — setting an existing day just updates its time.
+teacherRouter.put('/students/:id/attendance/:date', async (req, res) => {
+  const { date } = req.params
+  const time = req.body?.time || null
+  if (!isValidDate(date) || (time !== null && !isValidTime(time))) {
+    res.status(400).json({ error: 'INVALID_DATE_OR_TIME' })
+    return
+  }
+
+  const [student] = await sql`SELECT id FROM students WHERE id = ${req.params.id}`
+  if (!student) {
+    res.status(404).json({ error: 'STUDENT_NOT_FOUND' })
+    return
+  }
+
+  await sql`
+    INSERT INTO attendance (id, student_id, attendance_date, attendance_time)
+    VALUES (${randomUUID()}, ${student.id}, ${date}, ${time})
+    ON CONFLICT (student_id, attendance_date) DO UPDATE SET attendance_time = excluded.attendance_time
+  `
+  res.json({ date, time })
+})
+
+// Teacher override: mark a student absent on a date by removing that day's record.
+teacherRouter.delete('/students/:id/attendance/:date', async (req, res) => {
+  if (!isValidDate(req.params.date)) {
+    res.status(400).json({ error: 'INVALID_DATE_OR_TIME' })
+    return
+  }
+  await sql`
+    DELETE FROM attendance WHERE student_id = ${req.params.id} AND attendance_date = ${req.params.date}
+  `
+  res.status(204).end()
 })
 
 teacherRouter.get('/dashboard', async (req, res) => {
